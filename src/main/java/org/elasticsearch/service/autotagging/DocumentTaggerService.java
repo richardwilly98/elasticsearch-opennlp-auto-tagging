@@ -47,7 +47,6 @@ public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTa
         Stopwatch watcher = Stopwatch.createStarted();
         Set<String> keywords = Sets.newHashSet();
         try {
-//            BufferedReader r = new BufferedReader(new StringReader(text));
             BufferedReader r = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(text.getBytes("UTF-8"))));
             Multiset<String> nounSet = HashMultiset.create();
             ObjectStream<String> lineStream = new PlainTextByLineStream(r);
@@ -73,7 +72,7 @@ public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTa
                 }
             }
 
-            int max = 10;
+            int max = settings.getAsInt("opennlp-auto-tagging.max", new Integer(10));
             int count = 0;
             Multiset<String> sortedSet = Multisets.copyHighestCountFirst(nounSet);
             Iterator<Entry<String>> iterator = sortedSet.entrySet().iterator();
