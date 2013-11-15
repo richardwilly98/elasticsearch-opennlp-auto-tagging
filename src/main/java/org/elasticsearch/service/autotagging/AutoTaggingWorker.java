@@ -29,12 +29,11 @@ public class AutoTaggingWorker extends UntypedActor {
             SearchResponse searchResponse = client.prepareSearch(request.getIndex()).setTypes(request.getType())
                     .addField(request.getContent()).setQuery(QueryBuilders.idsQuery(request.getType()).ids(request.getId())).get();
             if (searchResponse.getHits().getTotalHits() > 0) {
-
-                String text = searchResponse.getHits().getAt(0).getFields().get(request.getContent()).getValue();
+                Object text = searchResponse.getHits().getAt(0).getFields().get(request.getContent()).getValue();
                 if (text == null) {
                     throw new ElasticSearchException("No value found for field " + request.getContent());
                 }
-                Set<String> keywords = service.extractKeywords(text.toString());
+                Set<String> keywords = service.extractKeywords(text.toString(), request.getMax());
                 if (keywords.size() > 0) {
                     client.prepareUpdate(request.getIndex(), request.getType(), request.getId()).setDoc(request.getField(), keywords).get();
                 }

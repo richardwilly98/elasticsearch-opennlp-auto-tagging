@@ -88,8 +88,7 @@ public class AutoTaggingMapper implements Mapper {
 
         logger.debug("text - {}", text);
 
-//        DocumentTagger tagger = new 
-        Set<String> tags = service.extractKeywords(text);
+        Set<String> tags = service.extractKeywords(text, null);
         logger.debug("tags - {}", tags);
 
         // context.externalValue(content);

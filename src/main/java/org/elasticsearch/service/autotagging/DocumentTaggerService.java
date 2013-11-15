@@ -17,7 +17,9 @@ import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.PlainTextByLineStream;
 
 import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.action.autotagging.AutoTaggingRequest;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.base.Stopwatch;
 import org.elasticsearch.common.collect.HashMultiset;
 import org.elasticsearch.common.collect.Multiset;
@@ -29,21 +31,45 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.env.Environment;
+
+import akka.actor.Actor;
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.Props;
+import akka.actor.UntypedActorFactory;
 
 public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTaggerService> {
 
     private static ESLogger logger = ESLoggerFactory.getLogger(DocumentTaggerService.class.getName());
     private static POSTaggerME tagger;
-    private final Environment environment;
+    private final Client client;
+    private static ActorSystem system;
+    private static ActorRef master;
 
     @Inject
-    public DocumentTaggerService(Settings settings, Client client, Environment environment) {
+    public DocumentTaggerService(Settings settings, final Client client) {
         super(settings);
-        this.environment = environment;
+        this.client = client;
     }
 
-    public Set<String> extractKeywords(String text) {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.elasticsearch.service.autotagging.DocumentTagger#detectTags(org.
+     * elasticsearch.action.autotagging.AutoTaggingRequest)
+     */
+    public void detectTags(AutoTaggingRequest request) {
+        try {
+            logger.debug("shardOperation - {} - {} - {} - {}", request.getIndex(), request.getType(), request.getId(),
+                    request.getContent(), request.getField());
+            master.tell(new AutoTaggingMaster.Process(request));
+        } catch (Throwable t) {
+            throw new ElasticSearchException(t.getMessage(), t);
+        }
+
+    }
+
+    public Set<String> extractKeywords(String text, @Nullable Integer max) {
         Stopwatch watcher = Stopwatch.createStarted();
         Set<String> keywords = Sets.newHashSet();
         try {
@@ -72,7 +98,9 @@ public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTa
                 }
             }
 
-            int max = settings.getAsInt("opennlp-auto-tagging.max", new Integer(10));
+            if (max == null || max == 0) {
+                max = settings.getAsInt("opennlp-auto-tagging.max", new Integer(10));
+            }
             int count = 0;
             Multiset<String> sortedSet = Multisets.copyHighestCountFirst(nounSet);
             Iterator<Entry<String>> iterator = sortedSet.entrySet().iterator();
@@ -107,27 +135,29 @@ public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTa
     @Override
     protected void doStart() throws ElasticSearchException {
         try {
-            logger.debug("doStart");
+            system = ActorSystem.create("OpenNlpAutoTaggingSystem");
+            master = system.actorOf(new Props(new UntypedActorFactory() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Actor create() {
+                    return new AutoTaggingMaster(DocumentTaggerService.this, client);
+                }
+            }), "master");
             InputStream is = getClass().getResourceAsStream("/models/en-pos-maxent.bin");
             tagger = new POSTaggerME(new POSModel(is));
             is.close();
         } catch (Throwable t) {
             throw new ElasticSearchException(t.getMessage(), t);
         }
-        // String model =
-        // environment.pluginsFile().toPath().resolve("auto-tagging/models/wsj-0-18-left3words-distsim.tagger").toString();
-        // logger.info("Model path: {}", model);
-        // logger.debug("Settings: {}", settings);
-        // tagger = new MaxentTagger(model);
     }
 
     @Override
     protected void doStop() throws ElasticSearchException {
-        logger.debug("doStop");
+        system.shutdown();
     }
 
     @Override
     protected void doClose() throws ElasticSearchException {
-        logger.debug("doClose");
     }
 }

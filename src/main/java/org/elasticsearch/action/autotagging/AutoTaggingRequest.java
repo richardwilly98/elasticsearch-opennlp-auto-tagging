@@ -13,54 +13,43 @@ public class AutoTaggingRequest extends SingleCustomOperationRequest<AutoTagging
     private String id;
     private String field;
     private String content;
+    private Integer max;
 
-    public static class Builder {
-
-        private Builder builder;
-        private String index;
-        private String type;
-        private String id;
-        private String field;
-        private String content;
-
-        public Builder(String index) {
-            this.index = index;
-            this.builder = this;
-        }
-
-        public Builder type(String type) {
-            this.type = type;
-            return this;
-        }
-
-        public Builder id(String id) {
-            this.id = id;
-            return this;
-        }
-
-        public Builder field(String field) {
-            this.field = field;
-            return this;
-        }
-
-        public Builder content(String content) {
-            this.content = content;
-            return this;
-        }
-
-        public AutoTaggingRequest build() {
-            return new AutoTaggingRequest(builder);
-        }
+    public AutoTaggingRequest() {
     }
 
-    AutoTaggingRequest() {}
-    
-    public AutoTaggingRequest(final Builder builder) {
-        this.index = builder.index;
-        this.type = builder.type;
-        this.id = builder.id;
-        this.field = builder.field;
-        this.content = builder.content;
+    public AutoTaggingRequest(String index) {
+        this.index = index;
+    }
+
+    public AutoTaggingRequest index(String index) {
+        this.index = index;
+        return this;
+    }
+
+    public AutoTaggingRequest type(String type) {
+        this.type = type;
+        return this;
+    }
+
+    public AutoTaggingRequest id(String id) {
+        this.id = id;
+        return this;
+    }
+
+    public AutoTaggingRequest field(String field) {
+        this.field = field;
+        return this;
+    }
+
+    public AutoTaggingRequest content(String content) {
+        this.content = content;
+        return this;
+    }
+
+    public AutoTaggingRequest max(Integer max) {
+        this.max = max;
+        return this;
     }
 
     public String getIndex() {
@@ -83,6 +72,10 @@ public class AutoTaggingRequest extends SingleCustomOperationRequest<AutoTagging
         return content;
     }
 
+    public Integer getMax() {
+        return max;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
@@ -91,6 +84,7 @@ public class AutoTaggingRequest extends SingleCustomOperationRequest<AutoTagging
         id = in.readOptionalString();
         field = in.readOptionalString();
         content = in.readOptionalString();
+        max = in.readInt();
     }
 
     @Override
@@ -101,6 +95,7 @@ public class AutoTaggingRequest extends SingleCustomOperationRequest<AutoTagging
         out.writeOptionalString(getId());
         out.writeOptionalString(getField());
         out.writeOptionalString(getContent());
+        out.writeInt(max);
     }
 
 }

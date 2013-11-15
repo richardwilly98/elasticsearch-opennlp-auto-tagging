@@ -4,7 +4,6 @@ import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 import org.elasticsearch.action.autotagging.AutoTaggingAction;
 import org.elasticsearch.action.autotagging.AutoTaggingRequest;
-import org.elasticsearch.action.autotagging.AutoTaggingRequest.Builder;
 import org.elasticsearch.action.autotagging.AutoTaggingResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -29,9 +28,8 @@ public class RestAutoTaggingAction extends BaseRestHandler {
 
     @Override
     public void handleRequest(final RestRequest request, final RestChannel channel) {
-        AutoTaggingRequest.Builder builder = new Builder(request.param("index")).type(request.param("type")).id(request.param("id"))
-                .field(request.param("t", "tags")).content(request.param("f", "content"));
-        AutoTaggingRequest autoTaggingRequest = builder.build();
+        AutoTaggingRequest autoTaggingRequest = new AutoTaggingRequest(request.param("index")).type(request.param("type"))
+                .id(request.param("id")).field(request.param("t", "tags")).content(request.param("f", "content")).max(request.paramAsInt("m", 0));
         client.execute(AutoTaggingAction.INSTANCE, autoTaggingRequest, new AcknowledgedRestResponseActionListener<AutoTaggingResponse>(
                 request, channel, logger));
     }

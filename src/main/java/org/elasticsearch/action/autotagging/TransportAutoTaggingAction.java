@@ -1,9 +1,6 @@
 package org.elasticsearch.action.autotagging;
 
-import java.util.Set;
-
 import org.elasticsearch.ElasticSearchException;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.single.custom.TransportSingleCustomOperationAction;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterService;
@@ -13,40 +10,21 @@ import org.elasticsearch.cluster.block.ClusterBlockLevel;
 import org.elasticsearch.cluster.routing.ShardsIterator;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.service.autotagging.AutoTaggingMaster;
 import org.elasticsearch.service.autotagging.DocumentTaggerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
-import akka.actor.Actor;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
-import akka.actor.UntypedActorFactory;
-
 public class TransportAutoTaggingAction extends TransportSingleCustomOperationAction<AutoTaggingRequest, AutoTaggingResponse> {
 
-    // private final DocumentTaggerService documentTaggerService;
-    // private final Client client;
-    private final ActorSystem system = ActorSystem.create("OpenNlpAutoTaggingSystem");
-    private final ActorRef master;
+    private final DocumentTaggerService documentTaggerService;
 
     @Inject
     protected TransportAutoTaggingAction(Settings settings, ThreadPool threadPool, ClusterService clusterService,
             TransportService transportService, final DocumentTaggerService documentTaggerService, final Client client) {
         super(settings, threadPool, clusterService, transportService);
-        // this.documentTaggerService = documentTaggerService;
-        // this.client = client;
-        master = system.actorOf(new Props(new UntypedActorFactory() {
-
-            @Override
-            public Actor create() {
-                // TODO Auto-generated method stub
-                return new AutoTaggingMaster(documentTaggerService, client);
-            }
-        }), "master");
+        this.documentTaggerService = documentTaggerService;
     }
+
 
     @Override
     protected String transportAction() {
@@ -67,28 +45,7 @@ public class TransportAutoTaggingAction extends TransportSingleCustomOperationAc
     @Override
     protected AutoTaggingResponse shardOperation(AutoTaggingRequest request, int shardId) throws ElasticSearchException {
         try {
-            logger.debug("shardOperation - {} - {} - {} - {}", request.getIndex(), request.getType(), request.getId(),
-                    request.getContent(), request.getField());
-            // SearchResponse searchResponse =
-            // client.prepareSearch(request.getIndex()).setTypes(request.getType())
-            // .addField(request.getContent()).setQuery(QueryBuilders.idsQuery(request.getType()).ids(request.getId())).get();
-            // if (searchResponse.getHits().getTotalHits() > 0) {
-            //
-            // String text =
-            // searchResponse.getHits().getAt(0).getFields().get(request.getContent()).getValue();
-            // if (text == null) {
-            // throw new ElasticSearchException("No value found for field " +
-            // request.getContent());
-            // }
-            // Set<String> keywords =
-            // documentTaggerService.extractKeywords(text.toString());
-            // if (keywords.size() > 0) {
-            // client.prepareUpdate(request.getIndex(), request.getType(),
-            // request.getId()).setDoc(request.getField(), keywords).get();
-            // }
-            // return new AutoTaggingResponse(keywords);
-            // }
-            master.tell(new AutoTaggingMaster.Process(request));
+            documentTaggerService.detectTags(request);
             return new AutoTaggingResponse();
         } catch (Throwable t) {
             throw new ElasticSearchException(t.getMessage(), t);
