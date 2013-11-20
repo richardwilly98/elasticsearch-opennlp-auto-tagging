@@ -27,7 +27,6 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<elasticsearch.version>1.0.0.Beta1</elasticsearch.version>
 		<opennlp.version>1.5.3</opennlp.version>
-		<akka.version>2.0.2</akka.version>
 	</properties>
 
 	<dependencies>
@@ -47,11 +46,6 @@
 			<artifactId>opennlp-maxent</artifactId>
 			<version>3.0.3</version>
 			<type>pom</type>
-		</dependency>
-		<dependency>
-			<groupId>com.typesafe.akka</groupId>
-			<artifactId>akka-actor</artifactId>
-			<version>${akka.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>log4j</groupId>
@@ -140,11 +134,6 @@
 		</plugins>
 	</build>
 	<repositories>
-		<repository>
-			<id>typesafe</id>
-			<name>Typesafe Repository</name>
-			<url>http://repo.typesafe.com/typesafe/releases/</url>
-		</repository>
 		<repository>
 			<id>central</id>
 			<url>http://central.maven.org/maven2/</url>

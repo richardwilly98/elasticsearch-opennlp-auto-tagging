@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import opennlp.tools.lemmatizer.SimpleLemmatizer;
 import opennlp.tools.postag.POSModel;
@@ -32,19 +34,12 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.settings.Settings;
 
-import akka.actor.Actor;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
-import akka.actor.UntypedActorFactory;
-
 public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTaggerService> {
 
     private static ESLogger logger = ESLoggerFactory.getLogger(DocumentTaggerService.class.getName());
     private static POSTaggerME tagger;
     private final Client client;
-    private static ActorSystem system;
-    private static ActorRef master;
+    private static ExecutorService executorService;
 
     @Inject
     public DocumentTaggerService(Settings settings, final Client client) {
@@ -62,7 +57,7 @@ public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTa
         try {
             logger.debug("shardOperation - {} - {} - {} - {}", request.getIndex(), request.getType(), request.getId(),
                     request.getContent(), request.getField());
-            master.tell(new AutoTaggingMaster.Process(request));
+            executorService.submit(CallableAutoTagging.detect(client, this, request));
         } catch (Throwable t) {
             throw new ElasticSearchException(t.getMessage(), t);
         }
@@ -135,15 +130,7 @@ public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTa
     @Override
     protected void doStart() throws ElasticSearchException {
         try {
-            system = ActorSystem.create("OpenNlpAutoTaggingSystem");
-            master = system.actorOf(new Props(new UntypedActorFactory() {
-                private static final long serialVersionUID = 1L;
-
-                @Override
-                public Actor create() {
-                    return new AutoTaggingMaster(DocumentTaggerService.this, client);
-                }
-            }), "master");
+            executorService = Executors.newFixedThreadPool(10);
             InputStream is = getClass().getResourceAsStream("/models/en-pos-maxent.bin");
             tagger = new POSTaggerME(new POSModel(is));
             is.close();
@@ -154,7 +141,7 @@ public class DocumentTaggerService extends AbstractLifecycleComponent<DocumentTa
 
     @Override
     protected void doStop() throws ElasticSearchException {
-        system.shutdown();
+        executorService.shutdown();
     }
 
     @Override
